@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>TV Channels</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body class="bg-gradient-to-b from-gray-900 to-black text-white min-h-screen">
+    <div class="container mx-auto px-4 py-6 flex flex-col min-h-screen">
+        <header class="bg-gradient-to-r from-gray-800 to-gray-900 p-6 rounded-lg shadow-2xl mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-gray-500 to-blue-500">
+                EYEPAPCORN TV
+            </h1>
+            <h2 class="text-lg text-left text-white-400 mt-2">
+                Watch your favorite TV channels online for free! for more check out<br><a href="https://watch.eyepapcorn.live" class="underline">eyepapcorn.com</a> we dont bite XD XD :)
+            </h2>
+        </header>
+
+        <!-- Video Section -->
+        <div class="w-full mb-6">
+            <div class="bg-gray-800 rounded-lg shadow-2xl p-4">
+                <h2 id="channel-name" class="text-xl font-semibold mb-4 text-center">Select a channel</h2>
+                <div class="aspect-w-16 aspect-h-9">
+                    <video id="videoPlayer" class="w-full rounded-lg shadow-lg" controls></video>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="mb-6">
+            <div class="bg-gray-800 rounded-lg shadow-2xl p-4">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1">
+                        <input type="text" id="searchInput" 
+                               class="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                               placeholder="Search all channels...">
+                    </div>
+                    <div class="flex gap-4">
+                        <select id="groupFilter" 
+                                class="px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <option value="">All Groups</option>
+                        </select>
+                        <button id="toggleView" 
+                                class="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500">
+                            Toggle View
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommended Channels -->
+        <div class="flex-1">
+            <div class="bg-gray-800 rounded-lg shadow-2xl p-4">
+                <h3 class="text-lg font-semibold mb-4" id="recommendationTitle">Recommended Channels</h3>
+                <div id="channelsContainer">
+                    <!-- Grid View -->
+                    <div id="gridView" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+                    
+                    <!-- List View (hidden by default) -->
+                    <div id="listView" class="hidden">
+                        <div class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let currentView = 'grid';
+    let channels = [];
+    let currentGroup = null;
+
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    function getRecommendedChannels(currentGroup) {
+        let recommendedChannels = [];
+        
+        if (currentGroup) {
+            // Get 4 channels from the same group
+            const sameGroupChannels = shuffleArray(channels.filter(c => c.group === currentGroup))
+                .slice(0, 4);
+            recommendedChannels = [...sameGroupChannels];
+
+            // Get 6 random channels from other groups
+            const otherChannels = shuffleArray(channels.filter(c => c.group !== currentGroup))
+                .slice(0, 6);
+            recommendedChannels = [...recommendedChannels, ...otherChannels];
+        } else {
+            // If no current group, just get 10 random channels
+            recommendedChannels = shuffleArray([...channels]).slice(0, 10);
+        }
+
+        return recommendedChannels;
+    }
+
+    function initializePlayer(src, name, button, group) {
+        const video = document.getElementById('videoPlayer');
+        document.getElementById('channel-name').textContent = 'Now Playing: ' + name;
+        currentGroup = group;
+        
+        // Remove active state from all buttons
+        document.querySelectorAll('.channel-button').forEach(b => 
+            b.classList.remove('ring-2', 'ring-red-500'));
+        
+        // Add active state to clicked button
+        button.classList.add('ring-2', 'ring-red-500');
+
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(src);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                video.play();
+            });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = src;
+            video.play();
+        } else {
+            alert("Your browser does not support HLS streaming.");
+        }
+
+        // Update recommendations
+        updateRecommendations();
+    }
+
+    function createChannelButton(channel, viewType) {
+        if (viewType === 'grid') {
+            return `
+                <button class="channel-button w-full bg-gray-900 hover:bg-gray-700 transition-all duration-300 rounded-lg p-3 flex flex-col items-center" 
+                        data-src="${channel.url}" 
+                        data-name="${channel.name}"
+                        data-group="${channel.group}">
+                    <div class="w-16 h-16 mb-2 overflow-hidden rounded-lg">
+                        <img src="${channel.logo}" alt="${channel.name}" 
+                             class="w-full h-full object-cover transform hover:scale-110 transition-transform duration-300">
+                    </div>
+                    <span class="text-sm text-center font-medium">${channel.name}</span>
+                    <span class="text-xs text-gray-400 mt-1">${channel.group || 'General'}</span>
+                </button>
+            `;
+        } else {
+            return `
+                <button class="channel-button w-full bg-gray-900 hover:bg-gray-700 transition-all duration-300 rounded-lg p-3 flex items-center" 
+                        data-src="${channel.url}" 
+                        data-name="${channel.name}"
+                        data-group="${channel.group}">
+                    <img src="${channel.logo}" alt="${channel.name}" class="w-12 h-12 rounded object-cover mr-4">
+                    <div class="flex-1">
+                        <div class="font-medium">${channel.name}</div>
+                        <div class="text-sm text-gray-400">${channel.group || 'General'}</div>
+                    </div>
+                </button>
+            `;
+        }
+    }
+
+    function updateRecommendations() {
+        const recommendedChannels = getRecommendedChannels(currentGroup);
+        const title = currentGroup ? 
+            `Recommended Channels (Including ${currentGroup})` : 
+            'Recommended Channels';
+        document.getElementById('recommendationTitle').textContent = title;
+        renderChannels(recommendedChannels);
+    }
+
+    function renderChannels(channelsToRender) {
+        const gridContainer = document.querySelector('#gridView');
+        const listContainer = document.querySelector('#listView > div');
+        
+        gridContainer.innerHTML = '';
+        listContainer.innerHTML = '';
+
+        channelsToRender.forEach(channel => {
+            const gridDiv = document.createElement('div');
+            gridDiv.innerHTML = createChannelButton(channel, 'grid');
+            gridContainer.appendChild(gridDiv);
+
+            const listDiv = document.createElement('div');
+            listDiv.innerHTML = createChannelButton(channel, 'list');
+            listContainer.appendChild(listDiv);
+        });
+
+        // Add click handlers
+        document.querySelectorAll('.channel-button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                initializePlayer(
+                    btn.dataset.src, 
+                    btn.dataset.name, 
+                    btn,
+                    btn.dataset.group
+                );
+            });
+        });
+    }
+
+    function filterChannels() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const groupFilter = document.getElementById('groupFilter').value;
+        
+        let filtered = channels;
+        
+        if (searchTerm) {
+            filtered = channels.filter(channel => 
+                channel.name.toLowerCase().includes(searchTerm));
+            document.getElementById('recommendationTitle').textContent = 'Search Results';
+        } else if (groupFilter) {
+            filtered = channels.filter(channel => 
+                channel.group === groupFilter);
+            document.getElementById('recommendationTitle').textContent = `Channels in ${groupFilter}`;
+        } else {
+            updateRecommendations();
+            return;
+        }
+
+        renderChannels(filtered.slice(0, 10));
+    }
+
+    // Fetch channels from the API instead of channels.json
+    fetch('https://api.eyepapcorn.com/api/channels')
+        .then(response => {
+            if(!response.ok) throw new Error('Failed to fetch channels from API');
+            return response.json();
+        })
+        .then(data => {
+            channels = data;
+            
+            // Initialize group filter
+            const groups = [...new Set(channels.map(channel => channel.group).filter(Boolean))].sort();
+            const groupSelect = document.getElementById('groupFilter');
+            groups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group;
+                option.textContent = group;
+                groupSelect.appendChild(option);
+            });
+
+            // Initial render with recommendations
+            updateRecommendations();
+
+            // Setup event listeners
+            document.getElementById('searchInput').addEventListener('input', filterChannels);
+            document.getElementById('groupFilter').addEventListener('change', filterChannels);
+            document.getElementById('toggleView').addEventListener('click', () => {
+                const gridView = document.getElementById('gridView');
+                const listView = document.getElementById('listView');
+                
+                if (currentView === 'grid') {
+                    gridView.classList.add('hidden');
+                    listView.classList.remove('hidden');
+                    currentView = 'list';
+                } else {
+                    gridView.classList.remove('hidden');
+                    listView.classList.add('hidden');
+                    currentView = 'grid';
+                }
+            });
+        })
+        .catch(err => {
+            console.error('Error fetching channels:', err.message);
+            alert('Failed to load channels. Please try again later.');
+        });
+    </script>
+</body>
+</html>
