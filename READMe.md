@@ -3,7 +3,7 @@ Below are simple instructions and notes you can include in a README file to expl
 What This Code Does
 
 	1.	Fetches Channel Data from EyePapcorn API:
-The code retrieves a list of TV channels from the https://api.eyepapcorn.com/api/channels endpoint. Each channel includes information such as its name, logo, group, and a streaming URL.
+The code retrieves a list of TV channels from the https://api.eyepapcorn.com/ endpoint. Each channel includes information such as its name, logo, group, and a streaming URL.
 
 	2.	Displays Channels in a Web UI:
 
@@ -70,7 +70,7 @@ How to Deploy on GitHub Pages
 Notes
 	•	API Availability:
 
-The application depends on the https://api.eyepapcorn.com/api/channels endpoint being accessible and responding with proper JSON data. If this endpoint is down or blocked, the interface won’t function properly.
+The application depends on the https://api.eyepapcorn.com/ endpoint being accessible and responding with proper JSON data. If this endpoint is down or blocked, the interface won’t function properly.
 
 	•	Browser Compatibility:
 
